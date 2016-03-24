@@ -44,8 +44,8 @@ public class QEPTest extends TestDriver {
 
         System.out.println("\n" + "Running " + TEST_NAME + "...\n");
         boolean status = PASS;
-        //status &= qepTest.test1();
-        //status &= qepTest.test2();
+        status &= qepTest.test1();
+        status &= qepTest.test2();
         status &= qepTest.test3();
         status &= qepTest.test4();
 
@@ -70,7 +70,7 @@ public class QEPTest extends TestDriver {
         FileScan scan = new FileScan(employee, hpEmp);
         Projection pro = new Projection(scan, 0, 1, 2);
         pro.execute();
-        System.out.print("\n\nTest 1 completed without exception.");
+        System.out.print("\n\nTest 1 completed without exception.\n");
         return PASS;
     }
 
@@ -89,7 +89,7 @@ public class QEPTest extends TestDriver {
 
         Selection sel = new Selection(scan, preds);
         sel.execute();
-        System.out.print("\n\nTest 2 completed without exception.");
+        System.out.print("\n\nTest 2 completed without exception.\n");
 
 
         return PASS;
@@ -116,7 +116,7 @@ public class QEPTest extends TestDriver {
         SimpleJoin sj = new SimpleJoin(scanEmp, scanDep, preds);
         Projection pro = new Projection(sj, 1, 6, 8);
         pro.execute();
-        System.out.print("\n\nTest 3 completed without exception.");
+        System.out.print("\n\nTest 3 completed without exception.\n");
 
         return PASS;
     }
@@ -142,7 +142,7 @@ public class QEPTest extends TestDriver {
         SimpleJoin sj = new SimpleJoin(scanEmp, scanDep, preds);
         Projection pro = new Projection(sj, 1);
         pro.execute();
-        System.out.print("\n\nTest 4 completed without exception.");
+        System.out.print("\n\nTest 4 completed without exception.\n");
 
         return PASS;
     }

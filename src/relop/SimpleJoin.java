@@ -118,8 +118,11 @@ public class SimpleJoin extends Iterator {
 	 * @throws IllegalStateException if no more tuples
 	 */
 	public Tuple getNext() {
-		
 		nextTupleIsConsumed = true;
 		return nextTuple;
+	}
+
+	public Schema getSchema() {
+		return schema;
 	}
 }
