@@ -63,8 +63,8 @@ class ROTest extends TestDriver {
 		System.out.println("\n" + "Running " + TEST_NAME + "...");
 		boolean status = PASS;
 		status &= rot.test1();
-		//status &= rot.test2();
-		//status &= rot.test3();
+		status &= rot.test2();
+		status &= rot.test3();
 
 		// display the final results
 		System.out.println();
@@ -146,26 +146,26 @@ class ROTest extends TestDriver {
 			pro.execute();
 			saveCounts("both");
 
-			// test join operator
-//			saveCounts(null);
-//			System.out.println("\n  ~> test simple (nested loops) join...\n");
-//			preds = new Predicate[] { new Predicate(AttrOperator.EQ,
-//					AttrType.FIELDNO, 0, AttrType.FIELDNO, 5) };
-//			HashJoin join = new HashJoin(new FileScan(s_drivers, file),
-//					new FileScan(s_drivers, file), preds);
-//			pro = new Projection(join, 0, 1, 5, 6);
-//			pro.execute();
-//
-//			// destroy temp files before doing final counts
-//			join = null;
-//			pro = null;
-//			sel = null;
-//			scan = null;
-//			keyscan = null;
-//			index = null;
-//			file = null;
-//			System.gc();
-//			saveCounts("join");
+			//test join operator
+			saveCounts(null);
+			System.out.println("\n  ~> test simple (nested loops) join...\n");
+			preds = new Predicate[] { new Predicate(AttrOperator.EQ,
+					AttrType.FIELDNO, 0, AttrType.FIELDNO, 5) };
+			HashJoin join = new HashJoin(new FileScan(s_drivers, file),
+					new FileScan(s_drivers, file), preds);
+			pro = new Projection(join, 0, 1, 5, 6);
+			pro.execute();
+
+			// destroy temp files before doing final counts
+			join = null;
+			pro = null;
+			sel = null;
+			scan = null;
+			keyscan = null;
+			index = null;
+			file = null;
+			System.gc();
+			saveCounts("join");
 
 			// that's all folks!
 			System.out.print("\n\nTest 1 completed without exception.");
@@ -247,17 +247,17 @@ class ROTest extends TestDriver {
 			saveCounts("rides");
 
 			// test hash join operator
-//			saveCounts(null);
-//			HashJoin join = new HashJoin(new FileScan(s_drivers, drivers),
-//					new FileScan(s_rides, rides), 0, 0);
-//			join.execute();
-//
-//			// destroy temp files before doing final counts
-//			join = null;
-//			rides = null;
-//			drivers = null;
-//			System.gc();
-//			saveCounts("h_join");
+			saveCounts(null);
+			HashJoin join = new HashJoin(new FileScan(s_drivers, drivers),
+					new FileScan(s_rides, rides), 0, 0);
+			join.execute();
+
+			// destroy temp files before doing final counts
+			join = null;
+			rides = null;
+			drivers = null;
+			System.gc();
+			saveCounts("h_join");
 
 			// that's all folks!
 			System.out.print("\n\nTest 2 completed without exception.");
@@ -331,25 +331,25 @@ class ROTest extends TestDriver {
 			saveCounts("groups");
 
 			// hash join of hash join; selection for output's sake
-//			saveCounts(null);
-//			HashJoin join1 = new HashJoin(new FileScan(s_groups, groups),
-//					new FileScan(s_rides, rides), 0, 1);
-//			HashJoin join2 = new HashJoin(join1, new IndexScan(s_drivers, ixdrivers,
-//					drivers), 2, 0);
-//			Selection sel = new Selection(join2, new Predicate(AttrOperator.LT,
-//					AttrType.FIELDNO, 10, AttrType.FIELDNO, 0));
-//			sel.execute();
-//
-//			// destroy temp files before doing final counts
-//			sel = null;
-//			join2 = null;
-//			join1 = null;
-//			groups = null;
-//			rides = null;
-//			ixdrivers = null;
-//			drivers = null;
-//			System.gc();
-//			saveCounts("query");
+			saveCounts(null);
+			HashJoin join1 = new HashJoin(new FileScan(s_groups, groups),
+					new FileScan(s_rides, rides), 0, 1);
+			HashJoin join2 = new HashJoin(join1, new IndexScan(s_drivers, ixdrivers,
+					drivers), 2, 0);
+			Selection sel = new Selection(join2, new Predicate(AttrOperator.LT,
+					AttrType.FIELDNO, 10, AttrType.FIELDNO, 0));
+			sel.execute();
+
+			// destroy temp files before doing final counts
+			sel = null;
+			join2 = null;
+			join1 = null;
+			groups = null;
+			rides = null;
+			ixdrivers = null;
+			drivers = null;
+			System.gc();
+			saveCounts("query");
 
 			// that's all folks!
 			System.out.print("\n\nTest 3 completed without exception.");

@@ -73,7 +73,7 @@ public class IndexScan extends Iterator {
     RID curr;
     curr = scan.getNext();
     data = file.selectRecord(curr);
-    return new Tuple(schema,data);
+    return new Tuple(schema, data);
   }
 
   /**

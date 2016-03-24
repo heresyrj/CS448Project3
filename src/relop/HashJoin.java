@@ -6,12 +6,21 @@ package relop;
  */
 public class HashJoin extends Iterator {
 
+    /** public Tuple[] getAll(SearchKey key)
+     *  public void add(SearchKey key, Tuple value)
+     *  are overwritten and given
+     * */
+    private HashTableDup hashTable;
+
+
     private Iterator outer;
     private Iterator inner;
+    private int lHashCol;
+    private int rHashCol;
     private Predicate[] preds;
-    private Schema schema;
     private Schema lSchema;
     private Schema rSchema;
+    private Schema schema;
 
     private boolean startJoin = true;
     Tuple leftTuple;
@@ -22,23 +31,25 @@ public class HashJoin extends Iterator {
     // pre-fetched tuple
     private Tuple nextTuple;
 
-    /**
-     * Constructs a join, given the left and right iterators and join predicates
-     * (relative to the combined schema).
-     */
-    public HashJoin(Iterator left, Iterator right, Predicate... preds) {
+    private HashJoin(Iterator left, Iterator right) {
         this.outer = left;
         this.inner = right;
-        this.preds = preds;
         lSchema = left.getSchema();
         rSchema = right.getSchema();
         this.schema = Schema.join(lSchema, rSchema);
-
+        hashTable = new HashTableDup();
         nextTupleIsConsumed = true;
     }
 
-    public void extract(Predicate pred) {
+    public HashJoin(Iterator left, Iterator right, int lHashCol, int rHashCol) {
+        this(left, right);
+        this.lHashCol = lHashCol;
+        this.rHashCol = rHashCol;
+    }
 
+    public HashJoin(Iterator left, Iterator right, Predicate[] preds) {
+        this(left, right);
+        this.preds = preds;
     }
 
     /**
@@ -86,8 +97,17 @@ public class HashJoin extends Iterator {
      * @throws IllegalStateException if no more tuples
      */
     public Tuple getNext() {
-
         nextTupleIsConsumed = true;
         return nextTuple;
     }
+
+
+    /**
+     ************************ Utilities *******************************
+     * Convert the input iterators into HashIndex iter if already is.
+     * After the conversion, both Iter will use same hash func
+     * in Bucketscan provided to finish partitioning phase.
+     */
+
+
 }
