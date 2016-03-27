@@ -78,6 +78,13 @@ public class FileScan extends Iterator {
     return new Tuple(schema,data);
   }
 
+  public RID getNextRID() {
+    RID rid;
+    rid = new RID();
+    scan.getNext(rid);
+    return rid;
+  }
+
   /**
    * Gets the RID of the last tuple returned.
    */

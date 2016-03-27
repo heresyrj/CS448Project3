@@ -92,7 +92,6 @@ public class SimpleJoin extends Iterator {
 		while (true) {
 
 			while (inner.hasNext()) {
-				
 				rightTuple = inner.getNext();
 
 				// try to match

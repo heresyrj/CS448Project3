@@ -73,11 +73,9 @@ public class KeyScan extends Iterator {
   public Tuple getNext() {
     byte[] data;
     RID curr;
-
     curr = scan.getNext();
     data = file.selectRecord(curr);
     return new Tuple(schema,data);
-
   }
 
   public Schema getSchema() {
