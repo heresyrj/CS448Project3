@@ -113,7 +113,7 @@ public class QEPTest extends TestDriver {
         Predicate[] preds = new Predicate[] {
                 new Predicate(AttrOperator.EQ, AttrType.FIELDNO, 4, AttrType.FIELDNO, 5)};
 
-        SimpleJoin sj = new SimpleJoin(scanEmp, scanDep, preds);
+        HashJoin sj = new HashJoin(scanEmp, scanDep, preds);
         Projection pro = new Projection(sj, 1, 6, 8);
         pro.execute();
         System.out.print("\n\nTest 3 completed without exception.\n");
@@ -131,16 +131,20 @@ public class QEPTest extends TestDriver {
         readDepartment(hpDep, indexDep);
 
         System.out.println("\n  ~> Test 4: Display the Name for each employee whose Salary is greater than the maximum salary\n" +
-                "of his department.\n ...\n");
+                "of his department ...\n");
 
         FileScan scanEmp = new FileScan(employee, hpEmp);
         FileScan scanDep = new FileScan(department, hpDep);
 
-        Predicate[] preds = new Predicate[] {
+        Predicate[] predsJoin = new Predicate[] {
+                new Predicate(AttrOperator.EQ, AttrType.FIELDNO, 4, AttrType.FIELDNO, 5)};
+
+        Predicate[] predsSel = new Predicate[] {
                 new Predicate(AttrOperator.GT, AttrType.FIELDNO, 3, AttrType.FIELDNO, 8)};
 
-        SimpleJoin sj = new SimpleJoin(scanEmp, scanDep, preds);
-        Projection pro = new Projection(sj, 1);
+        HashJoin sj = new HashJoin(scanEmp, scanDep, predsJoin);
+        Selection sel = new Selection(sj, predsSel);
+        Projection pro = new Projection(sel, 1);
         pro.execute();
         System.out.print("\n\nTest 4 completed without exception.\n");
 
@@ -149,9 +153,7 @@ public class QEPTest extends TestDriver {
 
     private void readDepartment(HeapFile hpDep, HashIndex indexDep){
         Tuple t = new Tuple(department);
-        department.print();
 
-        //System.out.println("Working Directory = " + System.getProperty("user.dir"));
         try {
             Scanner scanner = new Scanner(new File("src/tests/SampleData/Department.txt"));
             scanner.nextLine();
@@ -161,7 +163,6 @@ public class QEPTest extends TestDriver {
                 t.setStringFld(1, str[1]);
                 t.setIntFld(2, Integer.parseInt(str[2]));
                 t.setIntFld(3, Integer.parseInt(str[3]));
-                t.print();
 
                 // insert the tuple in the file and index
                 RID rid = hpDep.insertRecord(t.getData());
@@ -179,7 +180,6 @@ public class QEPTest extends TestDriver {
         Tuple t = new Tuple(employee);
         employee.print();
 
-        //System.out.println("Working Directory = " + System.getProperty("user.dir"));
         try {
             Scanner scanner = new Scanner(new File("src/tests/SampleData/Employee.txt"));
             scanner.nextLine();

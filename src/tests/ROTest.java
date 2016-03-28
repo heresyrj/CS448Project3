@@ -336,6 +336,7 @@ class ROTest extends TestDriver {
 					new FileScan(s_rides, rides), 0, 1);
 			HashJoin join2 = new HashJoin(join1, new IndexScan(s_drivers, ixdrivers,
 					drivers), 2, 0);
+
 			Selection sel = new Selection(join2, new Predicate(AttrOperator.LT,
 					AttrType.FIELDNO, 10, AttrType.FIELDNO, 0));
 			sel.execute();

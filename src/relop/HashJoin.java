@@ -4,6 +4,7 @@ import global.AttrOperator;
 import global.AttrType;
 import global.RID;
 import global.SearchKey;
+import heap.HeapFile;
 import index.HashIndex;
 
 /**
@@ -16,19 +17,12 @@ public class HashJoin extends Iterator {
      *  public void add(SearchKey key, Tuple value)
      *  are overwritten and given
      * */
-    private HashTableDup hashTable;
     private IndexScan outer;
     private IndexScan inner;
     private Predicate[] preds;
-    private Schema lSchema;
-    private Schema rSchema;
     private Schema schema;
     private int lcount;
-    Tuple leftTuple = null;
-    HashTableDup table;
-    SearchKey lastKey = null;
-
-    private boolean startJoin = true;
+    private HashTableDup table;
 
     // boolean variable to indicate whether the pre-fetched tuple is consumed or not
     private boolean nextTupleIsConsumed;
@@ -36,11 +30,15 @@ public class HashJoin extends Iterator {
     // pre-fetched tuple
     private Tuple nextTuple;
 
+    Tuple[] tuples;
+    Tuple rightTuple;
+    int tCount = 0;
+    int tLen = 0;
+
     private HashJoin(Iterator left, Iterator right) {
-        lSchema = left.getSchema();
-        rSchema = right.getSchema();
+        Schema lSchema = left.getSchema();
+        Schema rSchema = right.getSchema();
         this.schema = Schema.join(lSchema, rSchema);
-        hashTable = new HashTableDup();
         nextTupleIsConsumed = true;
         lcount = left.getSchema().getCount();
         table = new HashTableDup();
@@ -49,14 +47,9 @@ public class HashJoin extends Iterator {
     public HashJoin(Iterator left, Iterator right, int lHashCol, int rHashCol) {
         this(left, right);
         formPreds(lHashCol, rHashCol);
-        if (! (left instanceof HashJoin))
-            this.outer = convertScan(left, preds, 'l');
-        else
-            this.outer = (IndexScan) left;
-        if (!(right instanceof HashJoin))
-            this.inner = convertScan(right, preds, 'r');
-        else
-            this.inner = (IndexScan) right;
+        this.outer = convertScan(left, preds, 'l');
+        this.inner = convertScan(right, preds, 'r');
+
         addToHashTable();
     }
 
@@ -68,7 +61,7 @@ public class HashJoin extends Iterator {
         addToHashTable();
     }
 
-    public void formPreds(int lHashCol, int rHashCol) {
+    private void formPreds(int lHashCol, int rHashCol) {
         preds = new Predicate[]{new Predicate(AttrOperator.EQ, AttrType.FIELDNO, lHashCol, AttrType.FIELDNO, rHashCol+lcount)};
     }
 
@@ -113,7 +106,6 @@ public class HashJoin extends Iterator {
         }
     }
 
-
     /**
      * Returns true if there are more tuples, false otherwise.
      *
@@ -123,31 +115,46 @@ public class HashJoin extends Iterator {
         if (!nextTupleIsConsumed)
             return true;
 
+        if (tCount < tLen) {
+            Tuple temp = tuples[tCount];
+            tCount++;
+            nextTuple = Tuple.join(temp, rightTuple, this.schema);
+            for (int i = 0; i < preds.length; i++) {
+                if (preds[i].evaluate(nextTuple)) {
+                    nextTupleIsConsumed = false;
+                    return true;
+                }
+            }
+        }
 
-        Tuple rightTuple;
+
+
         SearchKey rightKey;
 
-
         while (true){
-
             while (inner.hasNext()){
                 rightTuple = inner.getNext();
                 rightKey = inner.getLastKey();
-                Tuple[] tuples = table.getAll(rightKey);
 
-                for (Tuple temp: tuples){
+                tuples = table.getAll(rightKey);
+
+                if (tuples == null) { continue;}
+
+                tLen = tuples.length;
+
+                for (tCount = 0; tCount < tLen; tCount++) {
+                    Tuple temp = tuples[tCount];
                     nextTuple = Tuple.join(temp, rightTuple, this.schema);
-                    for (int i = 0; i < preds.length; i++)
+                    for (int i = 0; i < preds.length; i++) {
                         if (preds[i].evaluate(nextTuple)) {
                             nextTupleIsConsumed = false;
+                            tCount++;
                             return true;
                         }
+                    }
                 }
             }
-
-            if (!outer.hasNext())
-                return false;
-
+            if (!outer.hasNext()) return false;
         }
     }
 
@@ -197,18 +204,12 @@ public class HashJoin extends Iterator {
      * However, it's inefficient to scan all the entries to build index,
      * which is also required not to do so.
      * */
-    public IndexScan convertScan(Iterator iter, Predicate[] preds, char indicator) {
+    private IndexScan convertScan(Iterator iter, Predicate[] preds, char indicator) {
         char type = iterType(iter);
+        int searchCol = (indicator == 'l')? (int)preds[0].left:(int)preds[0].right-lcount;
         switch (type){
             case 'f':
-                int searchCol;
                 FileScan fs = (FileScan)iter;
-                if (indicator == 'l') {
-                    searchCol = (int)preds[0].left;
-                }
-                else{
-                    searchCol = (int)preds[0].right-lcount;
-                }
                 HashIndex tempIndex = new HashIndex(null);
                 while(iter.hasNext()){
                     Tuple t = fs.getNext();
@@ -216,16 +217,28 @@ public class HashJoin extends Iterator {
                     tempIndex.insertEntry(new SearchKey(t.getField(searchCol)),rid);
                 }
                 iter.close();
-//                tempIndex.printSummary();
                 return new IndexScan(iter.getSchema(), tempIndex, fs.file);
             case 'k':
                 KeyScan ks = (KeyScan) iter;
                 return new IndexScan(ks.getSchema(), ks.index, ks.file);
+            case 'h':
+                HeapFile hf = new HeapFile(null);
+                HashIndex index = new HashIndex(null);
+                Tuple t;
+                while (iter.hasNext()) {
+                    t = iter.getNext();
+                    RID rid = hf.insertRecord(t.getData());
+                    index.insertEntry(new SearchKey(t.getField(searchCol)), rid);
+                }
+                iter.close();
+                return new IndexScan(iter.getSchema(),index,hf);
             default:
                 return (IndexScan) iter;
         }
 
     }
+
+
 
 
 
