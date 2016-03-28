@@ -15,6 +15,7 @@ public class IndexScan extends Iterator {
   BucketScan scan;
   Schema schema;
   HashIndex index;
+  RID currRID;
 
   /**
    * Constructs an index scan, given the hash index and schema.

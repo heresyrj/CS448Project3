@@ -13,18 +13,19 @@ public class KeyScan extends Iterator {
 
   HeapFile file;
   HashScan scan;
-  private Schema schema;
+  Schema schema;
   SearchKey key;
   HashIndex index;
+  RID currRID;
 
   /**
    * Constructs an index scan, given the hash index and schema.
    */
   public KeyScan(Schema schema, HashIndex index, SearchKey key, HeapFile file) {
     this.schema = schema;
-    this.file = file;
     this.index = index;
     this.key = key;
+    this.file = file;
     scan = index.openScan(key);
   }
 
@@ -75,11 +76,10 @@ public class KeyScan extends Iterator {
     RID curr;
     curr = scan.getNext();
     data = file.selectRecord(curr);
-    return new Tuple(schema,data);
+
+    return new Tuple(getSchema(),data);
   }
 
-  public Schema getSchema() {
-    return schema;
-  }
+  public Schema getSchema() { return schema; }
 
 } // public class KeyScan extends Iterator

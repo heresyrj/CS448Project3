@@ -76,19 +76,6 @@ public abstract class Iterator {
     return cnt;
   }
 
-  public int executeWoPrint() {
-    int cnt = 0;
-    //getSchema();
-    while (hasNext()) {
-      Tuple t = getNext();
-      if(t != null) {
-        cnt++;
-      }
-    }
-    close();
-    return cnt;
-  }
-
   /**
    * Called by the garbage collector when there are no more references to the
    * object; closes the iterator if it's still open.
@@ -104,6 +91,4 @@ public abstract class Iterator {
 }
 
   public Schema getSchema() { return schema; }
-
-
 } // public abstract class Iterator

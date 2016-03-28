@@ -17,12 +17,16 @@ public class HashJoin extends Iterator {
      *  are overwritten and given
      * */
     private HashTableDup hashTable;
-    private Iterator outer;
-    private Iterator inner;
+    private IndexScan outer;
+    private IndexScan inner;
     private Predicate[] preds;
     private Schema lSchema;
     private Schema rSchema;
     private Schema schema;
+    private int lcount;
+    Tuple leftTuple = null;
+    HashTableDup table;
+    SearchKey lastKey = null;
 
     private boolean startJoin = true;
 
@@ -33,27 +37,38 @@ public class HashJoin extends Iterator {
     private Tuple nextTuple;
 
     private HashJoin(Iterator left, Iterator right) {
-        this.outer = convertScan(left);
-        this.inner = convertScan(right);
         lSchema = left.getSchema();
         rSchema = right.getSchema();
         this.schema = Schema.join(lSchema, rSchema);
         hashTable = new HashTableDup();
         nextTupleIsConsumed = true;
+        lcount = left.getSchema().getCount();
+        table = new HashTableDup();
     }
 
     public HashJoin(Iterator left, Iterator right, int lHashCol, int rHashCol) {
         this(left, right);
-        formPreds(left, right, lHashCol, rHashCol);
+        formPreds(lHashCol, rHashCol);
+        if (! (left instanceof HashJoin))
+            this.outer = convertScan(left, preds, 'l');
+        else
+            this.outer = (IndexScan) left;
+        if (!(right instanceof HashJoin))
+            this.inner = convertScan(right, preds, 'r');
+        else
+            this.inner = (IndexScan) right;
+        addToHashTable();
     }
 
     public HashJoin(Iterator left, Iterator right, Predicate[] preds) {
         this(left, right);
         this.preds = preds;
+        this.outer = convertScan(left, preds, 'l');
+        this.inner = convertScan(right, preds, 'r');
+        addToHashTable();
     }
 
-    public void formPreds(Iterator left, Iterator right, int lHashCol, int rHashCol) {
-        int lcount = left.getSchema().getCount();
+    public void formPreds(int lHashCol, int rHashCol) {
         preds = new Predicate[]{new Predicate(AttrOperator.EQ, AttrType.FIELDNO, lHashCol, AttrType.FIELDNO, rHashCol+lcount)};
     }
 
@@ -88,13 +103,54 @@ public class HashJoin extends Iterator {
         inner.close();
     }
 
+    private void addToHashTable() {
+        Tuple t;
+        SearchKey k;
+        while (outer.hasNext()){
+            t = outer.getNext();
+            k = outer.getLastKey();
+            table.add(k, t);
+        }
+    }
+
+
     /**
      * Returns true if there are more tuples, false otherwise.
      *
      */
     public boolean hasNext() {
-        return false;
+
+        if (!nextTupleIsConsumed)
+            return true;
+
+
+        Tuple rightTuple;
+        SearchKey rightKey;
+
+
+        while (true){
+
+            while (inner.hasNext()){
+                rightTuple = inner.getNext();
+                rightKey = inner.getLastKey();
+                Tuple[] tuples = table.getAll(rightKey);
+
+                for (Tuple temp: tuples){
+                    nextTuple = Tuple.join(temp, rightTuple, this.schema);
+                    for (int i = 0; i < preds.length; i++)
+                        if (preds[i].evaluate(nextTuple)) {
+                            nextTupleIsConsumed = false;
+                            return true;
+                        }
+                }
+            }
+
+            if (!outer.hasNext())
+                return false;
+
+        }
     }
+
 
     /**
      * Gets the next tuple in the iteration.
@@ -109,12 +165,6 @@ public class HashJoin extends Iterator {
     public Schema getSchema() {
         return schema;
     }
-
-    public void probing() {
-        inner.getNext();
-    }
-
-
 
     /**
      ************************ Utilities *******************************
@@ -131,6 +181,8 @@ public class HashJoin extends Iterator {
             type = 'k';
         } else if (iter instanceof FileScan) {
             type = 'f';
+        } else if (iter instanceof HashJoin) {
+                type = 'h';
         } else {
             type = 'e';//error
         }
@@ -145,23 +197,34 @@ public class HashJoin extends Iterator {
      * However, it's inefficient to scan all the entries to build index,
      * which is also required not to do so.
      * */
-    public Iterator convertScan(Iterator iter) {
+    public IndexScan convertScan(Iterator iter, Predicate[] preds, char indicator) {
         char type = iterType(iter);
-        if(type == 'f') {
-            FileScan fs = (FileScan) iter;
-            HashIndex tempIndex = new HashIndex(null);
-            int i = 1;
-            while(fs.hasNext()){
-                RID rid = fs.getNextRID();
-                tempIndex.insertEntry(new SearchKey(i),rid);
-                i++;
-            }
-            fs.close();
-            tempIndex.printSummary();
-            return new IndexScan(fs.getSchema(), tempIndex, fs.file);
-        } else {
-            return iter;
+        switch (type){
+            case 'f':
+                int searchCol;
+                FileScan fs = (FileScan)iter;
+                if (indicator == 'l') {
+                    searchCol = (int)preds[0].left;
+                }
+                else{
+                    searchCol = (int)preds[0].right-lcount;
+                }
+                HashIndex tempIndex = new HashIndex(null);
+                while(iter.hasNext()){
+                    Tuple t = fs.getNext();
+                    RID rid = fs.currRID;
+                    tempIndex.insertEntry(new SearchKey(t.getField(searchCol)),rid);
+                }
+                iter.close();
+//                tempIndex.printSummary();
+                return new IndexScan(iter.getSchema(), tempIndex, fs.file);
+            case 'k':
+                KeyScan ks = (KeyScan) iter;
+                return new IndexScan(ks.getSchema(), ks.index, ks.file);
+            default:
+                return (IndexScan) iter;
         }
+
     }
 
 
